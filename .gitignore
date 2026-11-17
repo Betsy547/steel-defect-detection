@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# 运行时产物：上传图、检测记录库
+static/uploads/*
+!static/uploads/.gitkeep
+detections.db
+
+# 系统垃圾
+Thumbs.db
+desktop.ini
+.DS_Store

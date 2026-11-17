@@ -1,0 +1,18 @@
+# 钢材表面缺陷检测数据集配置（NEU-DET，6 类）
+#
+# 数据建议放在 D:/yolo/datasets/NEU-DET。
+# 训练脚本 train.py 支持用 --data-root 覆盖这里的 path，
+# 所以同一份代码在 Windows 本地和 Linux 服务器上都能跑。
+
+path: D:/yolo/datasets/NEU-DET
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: crazing
+  1: inclusion
+  2: patches
+  3: pitted_surface
+  4: rolled-in_scale
+  5: scratches

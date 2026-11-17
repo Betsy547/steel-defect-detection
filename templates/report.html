@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>检测报告 #{{ "%05d"|format(record_id) }}</title>
+<style>
+  :root {
+    --paper: #e7e9e3; --card: #f5f6f2; --ink: #14181b; --ink-soft: #2b3236;
+    --steel: #5a6367; --muted: #6f7778; --line: #c6cbc2; --rule: #d9ddd4;
+    --amber: #b8860b; --pass: #2c6b45; --review: #9a5b0b; --fail: #9b2c22;
+    --sans: "Bahnschrift", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 26px 16px 60px; background: var(--paper); color: var(--ink);
+    font: 400 13px/1.6 var(--sans); font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .bar {
+    width: min(840px, 100%); margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .bar a { color: var(--steel); text-decoration: none; font-size: 12.5px; }
+  .bar a:hover { color: var(--ink); }
+  .bar button {
+    height: 34px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 2px;
+    background: var(--ink); color: #f2f3ee; font: 600 12.5px var(--sans); cursor: pointer;
+  }
+  .doc {
+    width: min(840px, 100%); margin: 0 auto; padding: 40px 44px 36px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+  }
+
+  header.head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+    padding-bottom: 16px; border-bottom: 2px solid var(--ink);
+  }
+  .head h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: .03em; }
+  .head p { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
+  .head dl { margin: 0; display: grid; gap: 4px; text-align: right; }
+  .head dl div { display: flex; gap: 10px; justify-content: flex-end; font-size: 11.5px; }
+  .head dt { color: var(--muted); }
+  .head dd { margin: 0; color: var(--ink); }
+
+  .verdict-row {
+    display: flex; align-items: flex-start; gap: 26px; flex-wrap: wrap;
+    padding: 26px 0 22px; border-bottom: 1px solid var(--rule);
+  }
+  .stamp {
+    flex: none; padding: 8px 20px 10px; border: 2px solid currentColor; border-radius: 2px;
+    transform: rotate(-.7deg); text-align: center;
+  }
+  .stamp strong { display: block; font-size: 28px; font-weight: 700; line-height: 1.15; letter-spacing: .14em; text-indent: .14em; }
+  .stamp span { display: block; margin-top: 3px; font-size: 10.5px; color: var(--steel); }
+  .pass .stamp { color: var(--pass); background: rgba(44,107,69,.07); }
+  .review .stamp { color: var(--review); background: rgba(154,91,11,.07); }
+  .fail .stamp { color: var(--fail); background: rgba(155,44,34,.07); }
+  .verdict-row p { margin: 6px 0 0; max-width: 52ch; font-size: 13px; line-height: 1.7; color: var(--ink-soft); }
+  .verdict-row .note { display: block; margin-top: 8px; font-size: 11px; color: var(--muted); }
+
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
+  .facts div { padding: 12px 16px; border-left: 1px solid var(--rule); }
+  .facts div:first-child { padding-left: 0; border-left: 0; }
+  .facts dt { font-size: 10.5px; color: var(--muted); }
+  .facts dd { margin: 3px 0 0; font-size: 13px; font-weight: 600; }
+
+  .figures { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 22px 0 4px; }
+  figure { margin: 0; }
+  figure img {
+    display: block; width: 100%; height: auto; max-height: 260px; object-fit: contain;
+    background: #171b1e; border-radius: 2px; image-rendering: pixelated;
+  }
+  figcaption { margin-top: 7px; font-size: 10.5px; color: var(--muted); }
+
+  h2 { margin: 26px 0 8px; font-size: 12.5px; font-weight: 600; letter-spacing: .03em; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    padding: 0 8px 6px; border-bottom: 1px solid var(--ink); text-align: left;
+    font-size: 10.5px; font-weight: 500; color: var(--muted); white-space: nowrap;
+  }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .num { text-align: right; }
+  .en { margin-left: 6px; font-size: 10px; color: var(--muted); }
+  .none { margin: 18px 0 0; font-size: 12.5px; color: var(--steel); }
+
+  .params { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 20px; }
+  .params div { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 12px; }
+  .params dt { color: var(--steel); }
+  .params dd { margin: 0; }
+
+  footer.foot { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--rule); }
+  footer.foot p { margin: 0; font-size: 10.5px; line-height: 1.7; color: var(--muted); }
+  .sign { margin-top: 22px !important; color: var(--ink-soft) !important; font-size: 12px !important; letter-spacing: .04em; }
+
+  @media (max-width: 620px) {
+    .doc { padding: 24px 20px; }
+    .facts { grid-template-columns: 1fr 1fr; }
+    .facts div:nth-child(3) { border-left: 0; padding-left: 0; }
+    .facts div { border-top: 1px solid var(--rule); }
+    .figures, .params { grid-template-columns: 1fr; }
+    .head { flex-direction: column; }
+    .head dl { text-align: left; }
+    .head dl div { justify-content: flex-start; }
+  }
+
+  @page { size: A4; margin: 14mm; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .bar { display: none; }
+    .doc { width: 100%; border: 0; padding: 0; background: #fff; }
+    .stamp { background: transparent !important; }
+    figure img { border: 1px solid #bbb; background: #fff; }
+    table, .facts, .figures { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a href="/#/record/{{ record_id }}">返回检测结果</a>
+  <button type="button" onclick="window.print()">打印 / 保存为 PDF</button>
+</div>
+
+<article class="doc {{ verdict.status }}">
+  <header class="head">
+    <div>
+      <h1>钢带表面缺陷检测报告</h1>
+      <p>热轧钢带 · YOLO11s · NEU-DET</p>
+    </div>
+    <dl>
+      <div><dt>报告编号</dt><dd>#{{ "%05d"|format(record_id) }}</dd></div>
+      <div><dt>检测时间</dt><dd>{{ recorded_at|replace("T", " ") }}</dd></div>
+    </dl>
+  </header>
+
+  <section class="verdict-row">
+    <div class="stamp">
+      <strong>{{ verdict.label }}</strong>
+      <span>缺陷 {{ verdict.defects|length }} 处</span>
+    </div>
+    <p>{{ verdict.reason }}
+      <span class="note">判定阈值：检出阈值 {{ params.conf }}　不合格阈值 {{ params.conf_high }}</span>
+    </p>
+  </section>
+
+  <section class="facts">
+    <div><dt>检测文件</dt><dd>{{ filename }}</dd></div>
+    <div><dt>图像尺寸</dt><dd>{{ verdict.image_size[0] }} × {{ verdict.image_size[1] }} px</dd></div>
+    <div><dt>缺陷数量</dt><dd>{{ verdict.defects|length }} 处</dd></div>
+    <div><dt>推理耗时</dt><dd>{{ "%.0f"|format(verdict.elapsed_ms) }} ms</dd></div>
+  </section>
+
+  <section class="figures">
+    <figure>
+      <img src="{{ orig_url }}" alt="原始图像">
+      <figcaption>图 1　原始图像</figcaption>
+    </figure>
+    <figure>
+      <img src="{{ pred_url }}" alt="检测结果">
+      <figcaption>图 2　检测结果（红框：置信度 ≥ 不合格阈值；橙框：低于阈值，建议复检）</figcaption>
+    </figure>
+  </section>
+
+  {% if verdict.defects %}
+  <h2>缺陷明细</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>序号</th><th>缺陷类型</th><th class="num">置信度</th>
+        <th class="num">面积 px²</th><th>位置 x1, y1 – x2, y2</th><th>处置建议</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in verdict.defects %}
+      <tr>
+        <td>{{ "%02d"|format(loop.index) }}</td>
+        <td>{{ d.name_zh }}<span class="en">{{ d.name }}</span></td>
+        <td class="num">{{ "%.2f"|format(d.conf) }}</td>
+        <td class="num">{{ "%.0f"|format(d.area) }}</td>
+        <td>{{ "%.0f"|format(d.bbox[0]) }}, {{ "%.0f"|format(d.bbox[1]) }} –
+            {{ "%.0f"|format(d.bbox[2]) }}, {{ "%.0f"|format(d.bbox[3]) }}</td>
+        <td>{{ "判不合格" if d.conf >= params.conf_high else "建议复检" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="none">本次检测未发现表面缺陷，图像上没有标注框。</p>
+  {% endif %}
+
+  <h2>检测参数</h2>
+  <section class="params">
+    <div><dt>检出阈值</dt><dd>{{ params.conf }}</dd></div>
+    <div><dt>不合格阈值</dt><dd>{{ params.conf_high }}</dd></div>
+    <div><dt>最小面积</dt><dd>{{ "%.0f"|format(params.min_area) }} px</dd></div>
+    <div><dt>模型</dt><dd>YOLO11s / 320</dd></div>
+  </section>
+
+  <footer class="foot">
+    <p>判定规则：未检出缺陷判为「合格」；存在缺陷且最高置信度不低于不合格阈值判为「不合格」；
+       其余建议人工复检。本报告由模型自动生成，仅作为质检辅助依据。</p>
+    <p class="sign">检测人：____________　　审核人：____________　　日期：____________</p>
+  </footer>
+</article>
+
+</body>
+</html>

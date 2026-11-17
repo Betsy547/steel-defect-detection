@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>钢带表面质检台</title>
+<meta name="description" content="热轧钢带表面缺陷检测：上传图像，输出合格 / 建议复检 / 不合格判定与缺陷位置。">
+<link rel="stylesheet" href="/static/app/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="shell topbar-inner">
+    <a class="brand" href="#/detect">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">钢带表面质检台</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="主导航">
+      <a href="#/detect" data-view="detect">检测</a>
+      <a href="#/history" data-view="history">历史</a>
+      <a href="#/stats" data-view="stats">统计</a>
+      <a href="#/model" data-view="model">模型</a>
+    </nav>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="shell strip-inner" id="strip">
+    <span class="strip-item"><b>模型</b><span data-strip="model">YOLO11s</span></span>
+    <span class="strip-item"><b>权重</b><span data-strip="ready">读取中</span></span>
+    <span class="strip-item"><b>输入</b><span data-strip="imgsz">320 × 320</span></span>
+    <span class="strip-item"><b>设备</b><span data-strip="device">CPU</span></span>
+    <span class="strip-item strip-item--end"><b>测试集 mAP50</b><span data-strip="map">—</span></span>
+  </div>
+</div>
+
+<main id="app" class="shell" tabindex="-1"></main>
+
+<footer class="foot">
+  <div class="shell foot-inner">
+    <span>计算机视觉课程设计　NEU-DET 热轧钢带数据集</span>
+    <span class="foot-links">
+      <a href="/api/model" target="_blank" rel="noopener">JSON 接口</a>
+    </span>
+  </div>
+</footer>
+
+<div class="tip" id="tip" role="status" aria-live="polite" hidden></div>
+
+<script src="/static/app/app.js" defer></script>
+</body>
+</html>

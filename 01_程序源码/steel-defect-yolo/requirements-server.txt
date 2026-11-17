@@ -1,0 +1,9 @@
+# 云端训练环境（Linux + NVIDIA GPU）
+# AutoDL / 阿里云等镜像通常已自带 CUDA 版 torch，先确认再装：
+#   python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+
+ultralytics>=8.3.0
+opencv-python>=4.9.0
+pandas>=2.0.0
+pyyaml>=6.0
+tensorboard>=2.14.0
