@@ -34,6 +34,9 @@
 └── README.md                   本文件
 ```
 
+训练脚本、数据准备、云端训练与复现流程的详细说明见
+[01_程序源码/steel-defect-yolo/README.md](01_程序源码/steel-defect-yolo/README.md)。
+
 ## 快速开始（只看系统）
 
 需要 Python 3.10+，先装依赖：
