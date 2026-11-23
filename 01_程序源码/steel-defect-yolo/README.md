@@ -165,7 +165,7 @@ A：把 `--batch` 减半，或者 `--imgsz` 降到 256。
 A：先跑 `check_dataset.py` 看框有没有画偏；再确认 `data.yaml` 里 `names` 的顺序和标注一致。
 
 **Q：本地推理很慢**
-A：CPU 推理 yolov8s 大约 50–100ms/张，演示够用。批量处理建议用 `--imgsz 320`。
+A：CPU 推理 YOLO11s 实测约 27 ms/张（Ryzen 9 8945H），其他模型视参数量而定，演示都够用。批量处理建议用 `--imgsz 320`。
 
 **Q：报错 `Download failure for Arial.ttf`**
 A：ultralytics 画图要用的字体下载失败（国内常见）。直接把系统字体复制过去：
@@ -180,3 +180,8 @@ A：这是 ultralytics 的 `runs_dir` 设置在起作用。脚本会把 `--proje
 
 **Q：换别的数据集**
 A：改 `data.yaml` 的 `names` 和 `path`，类别数不需要改代码。
+
+## 许可
+
+本仓库自写代码采用 MIT License，全文见 [LICENSE](../../LICENSE)。
+Ultralytics YOLO 依赖为 AGPL-3.0；NEU-DET 数据集版权归原作者，仅用于学习与研究。

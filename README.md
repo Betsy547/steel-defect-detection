@@ -11,7 +11,7 @@
 | 模型 | YOLO11s，NEU-DET 微调，输入 320×320 |
 | 测试集 mAP50 | **0.739**（mAP50-95 0.427） |
 | 训练环境 | AutoDL RTX 4090，150 epochs，约 7 分钟 |
-| 部署环境 | 本地 CPU，单张推理约 30–50 ms |
+| 部署环境 | 本地 CPU，单张推理约 27 ms（Ryzen 9 8945H 实测） |
 | 系统形态 | Flask + 原生 HTML/CSS/JS 单页前端 + SQLite + JSON 接口 |
 
 ## 目录结构
@@ -111,3 +111,10 @@ python scripts/val.py --weights ../../02_模型权重/best.pt \
 
 已知短板：龟裂（crazing）各类 mAP50 只有 0.26~0.41。这类缺陷是细密网状微裂纹，
 在 200×200 灰度图上与轧制纹理高度相似，是 NEU-DET 公认最难的一类。
+
+## 许可
+
+- 本仓库自写代码（`app.py`、`detector.py`、`db.py`、`model_meta.py`、`static/`、`templates/` 以及 `01_程序源码/` 下的训练与实验脚本）采用 **MIT License**，全文见 [LICENSE](LICENSE)。
+- 依赖库遵循各自的原许可：Ultralytics YOLO 为 AGPL-3.0，Flask 为 BSD-3-Clause，OpenCV 为 Apache-2.0。本项目以安装依赖的方式调用，未修改其源码；如需分发修改后的 Ultralytics 代码，请另行遵守 AGPL-3.0。
+- 数据集 NEU-DET 版权归原数据集作者所有，仅用于学习与研究，不在 MIT 许可范围内。
+- 模型权重由 NEU-DET 微调得到，使用或再分发时请同时遵守数据集与原框架的许可。
