@@ -11,6 +11,8 @@
 
 from pathlib import Path
 
+from PIL import Image
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -149,7 +151,27 @@ def fig_arch():
     plt.close(fig)
 
 
+def combine(paths, out, cell_w=1000, gap=24):
+    """把两张系统截图并排拼成一张，供报告双图排版。"""
+    root = OUT.parent
+    imgs = []
+    for p in paths:
+        im = Image.open(root / p).convert("RGB")
+        h = round(im.height * cell_w / im.width)
+        imgs.append(im.resize((cell_w, h), Image.LANCZOS))
+    height = max(im.height for im in imgs)
+    width = cell_w * len(imgs) + gap * (len(imgs) - 1)
+    canvas = Image.new("RGB", (width, height), "white")
+    x = 0
+    for im in imgs:
+        canvas.paste(im, (x, 0))
+        x += cell_w + gap
+    canvas.save(OUT / out)
+
+
 if __name__ == "__main__":
     fig_route()
     fig_arch()
-    print("已生成：图1-技术路线图.png、图6-系统架构图.png")
+    combine(["05_系统截图/04-history.jpg", "05_系统截图/05-stats.jpg"], "图8-历史与统计.png")
+    combine(["05_系统截图/03-batch.jpg", "05_系统截图/07-report.jpg"], "图9-批量与报告.png")
+    print("已生成：图1、图6、图8、图9")

@@ -67,7 +67,19 @@ def main():
     ap.add_argument("--project", default="runs/detect")
     ap.add_argument("--name", default="train")
     ap.add_argument("--resume", action="store_true", help="从 last.pt 继续训练")
-    ap.add_argument("--cache", action="store_true", help="缓存图片到内存/磁盘，小数据集可开")
+    ap.add_argument(
+        "--cache",
+        nargs="?",
+        const="ram",
+        default="none",
+        choices=["none", "ram", "disk"],
+        help="缓存图片：none/ram/disk；只写 --cache 等价于 ram（兼容旧命令）",
+    )
+    ap.add_argument(
+        "--deterministic",
+        action="store_true",
+        help="启用 PyTorch 确定性算法，重复实验时结果更稳定（略慢）",
+    )
     args = ap.parse_args()
 
     data_cfg = build_data_cfg(Path(args.data), args.data_root)
@@ -82,6 +94,7 @@ def main():
     print(f"数据根目录: {data_cfg['path']}")
     print(f"类别      : {data_cfg.get('names')}")
     print(f"imgsz={args.imgsz}  batch={args.batch}  epochs={args.epochs}")
+    print(f"seed={args.seed}  cache={args.cache}  deterministic={args.deterministic}")
     print("=" * 60)
 
     model = YOLO(args.model)
@@ -99,7 +112,8 @@ def main():
         name=args.name,
         exist_ok=True,
         resume=args.resume,
-        cache=args.cache,
+        cache=False if args.cache == "none" else args.cache,
+        deterministic=args.deterministic,
         plots=True,
         val=True,
     )

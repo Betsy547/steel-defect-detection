@@ -65,6 +65,66 @@ streamlit run app/streamlit_app.py
 
 模型路径填 `D:/yolo/weights/best.pt`。
 
+## 6. 3 模型 × 3 随机种子重复实验
+
+`cloud/seed_sweep.sh` 会依次训练 yolov8s / yolo11s / yolo26s，
+每个模型用 seed 0/1/2 各训一次，然后统一在测试集上评估，
+输出 `seed_sweep.md`（可直接改成报告表格）。
+
+```bash
+cd /root/steel-defect-yolo
+bash cloud/seed_sweep.sh
+```
+
+脚本会自动探测两种常见的数据布局：
+
+- `/root/autodl-tmp/steel/NEU-DET`
+- `/root/autodl-tmp/NEU-DET`
+
+也可以手动指定，并放到后台跑：
+
+```bash
+CODE_DIR=/root/steel-defect-yolo \
+DATA_ROOT=/root/autodl-tmp/steel/NEU-DET \
+WEIGHTS_DIR=/root/steel-defect-yolo/weights \
+OUT=/root/autodl-tmp/steel/runs/seed_sweep \
+nohup bash cloud/seed_sweep.sh > /root/autodl-tmp/steel/seed_sweep.out 2>&1 &
+
+tail -f /root/autodl-tmp/steel/seed_sweep.out
+```
+
+结果文件：
+
+- `seed_sweep_runs.csv`：9 次运行逐行记录
+- `seed_sweep_summary.csv`：每个模型的均值/标准差/平均排名
+- `seed_sweep_per_class.csv`：每类 AP50
+- `seed_sweep.md`：汇总表
+
+## 7. 鲁棒性压力测试
+
+依赖第 6 步产出的 `seed-<model>-s0/weights/best.pt`。只改测试图像，不改标注：
+
+```bash
+cd /root/steel-defect-yolo
+bash cloud/robustness.sh
+```
+
+默认条件：clean 基线 + 5 种扰动 × 3 个严重度（变暗、低对比度、高斯噪声、水平运动模糊、JPEG 压缩），
+三个模型都会评估。后台跑：
+
+```bash
+RUNS_DIR=/root/autodl-tmp/steel/runs/seed_sweep \
+OUT=/root/autodl-tmp/steel/runs/robustness \
+nohup bash cloud/robustness.sh > /root/autodl-tmp/steel/robustness.out 2>&1 &
+```
+
+结果文件：
+
+- `robustness_runs.csv`：模型 × 条件逐行记录
+- `robustness_summary.csv`：模型 × 扰动类型汇总
+- `robustness.md`：报告用表格
+- `robustness_heatmap.png`、`robustness_curves.png`、`robustness_examples.png`
+
 ---
 
 ## 跑多组对照实验的建议
