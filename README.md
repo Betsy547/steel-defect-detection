@@ -53,7 +53,7 @@ pip install flask ultralytics opencv-python
 python app.py
 ```
 
-浏览器打开 http://localhost:5000 。
+
 
 > 不指定 `--weights` 时会自动找权重：环境变量 `STEEL_WEIGHTS` → 本目录 `02_模型权重/`
 > → `D:/yolo/weights/`。换机器或换目录后如果提示找不到，
