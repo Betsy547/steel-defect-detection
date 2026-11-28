@@ -1,4 +1,5 @@
-# Web 端依赖（CPU 推理即可）
+# Flask Web 系统依赖（GPU 或 CPU 推理均可；GPU 需要 CUDA 版 PyTorch）
+# 对应入口：打包根目录 app.py
 # 安装：pip install -r requirements-web.txt
 
 flask>=3.0

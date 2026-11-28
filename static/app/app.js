@@ -80,7 +80,7 @@ function fillStrip(m) {
   if (m.model) set('model', m.model.name);
   set('ready', m.ready ? '已加载' : '未找到');
   set('imgsz', `${m.imgsz} × ${m.imgsz}`);
-  set('device', m.model && m.model.device ? m.model.device : 'CPU');
+  set('device', m.device === 'cpu' ? 'CPU' : (m.device ? `GPU` : 'CPU'));
   if (m.test_metrics) set('map', Number(m.test_metrics.mAP50).toFixed(3));
   const item = document.querySelector('[data-strip="ready"]');
   if (item) item.parentElement.classList.toggle('is-off', !m.ready);
@@ -825,6 +825,15 @@ async function renderModel(token) {
       <td class="num" style="text-align:right">${c.r.toFixed(3)}</td>
     </tr>`).join('');
 
+  const sw = (m.seed_sweep || []).map((c) => `
+    <tr class="${c.model === M.name ? 'is-pick' : ''}">
+      <td>${esc(c.model)}${c.model === M.name ? '<span class="tag" style="margin-left:8px">部署</span>' : ''}</td>
+      <td class="num" style="text-align:right">${esc(c.map50)}</td>
+      <td class="num" style="text-align:right">${esc(c.map50_95)}</td>
+      <td class="num" style="text-align:right">${esc(c.p)}</td>
+      <td class="num" style="text-align:right">${esc(c.r)}</td>
+    </tr>`).join('');
+
   app.innerHTML = `
     <div class="model-grid">
       <section class="block">
@@ -838,7 +847,7 @@ async function renderModel(token) {
           <div class="spec-row"><dt>推理尺寸</dt><dd>${m.imgsz} × ${m.imgsz}</dd></div>
           <div class="spec-row"><dt>训练轮次</dt><dd>${TR.epochs} 轮（最佳 ${TR.best_epoch}）</dd></div>
           <div class="spec-row"><dt>批大小</dt><dd>${TR.batch}</dd></div>
-          <div class="spec-row"><dt>运行设备</dt><dd>${esc(M.device)}</dd></div>
+          <div class="spec-row"><dt>运行设备</dt><dd>${esc(m.device === 'cpu' ? 'CPU（本地演示）' : 'GPU（本地演示）')}</dd></div>
           <div class="spec-row"><dt>权重路径</dt><dd style="font-size:11px">${esc(m.weights)}</dd></div>
         </dl>
       </section>
@@ -887,7 +896,17 @@ async function renderModel(token) {
         </tr></thead>
         <tbody>${cmp}</tbody>
       </table>
-      <p class="tbl-note">三者差距在 1–3 个百分点，属于单次训练的波动范围。YOLO11s 参数量最少，精度损失可忽略，因此选作部署模型。</p>
+      <p class="tbl-note">单次训练的三行来自云端 RTX 4090 的同协议批次（seed 0），与当前部署权重不是同一次训练；部署权重在本机 RTX 4060 上训练，测试集 mAP50 为 ${T.mAP50.toFixed(3)}。单看一次训练，三个模型的 mAP50 差距只有 1–3 个百分点。</p>
+      <table class="grid" style="margin-top:12px">
+        <thead><tr>
+          <th>3 个随机种子的均值 ± 标准差</th><th class="num" style="text-align:right">mAP50</th>
+          <th class="num" style="text-align:right">mAP50-95</th>
+          <th class="num" style="text-align:right">P</th>
+          <th class="num" style="text-align:right">R</th>
+        </tr></thead>
+        <tbody>${sw}</tbody>
+      </table>
+      <p class="tbl-note">把每个模型重复训练 3 次（seed 0/1/2）后，YOLO26s 三次都是第一，六类缺陷的逐类 mAP50 也都高于另外两个模型；参数量和权重体积与 YOLO11s 相当（9.95 M / 20.3 MB 对 9.43 M / 19.2 MB）。因此选 YOLO26s 作为部署模型。YOLOv8s 的 Recall 略高，如果漏检的代价远大于误检，它也值得考虑。</p>
     </section>
 
     <div class="model-grid">

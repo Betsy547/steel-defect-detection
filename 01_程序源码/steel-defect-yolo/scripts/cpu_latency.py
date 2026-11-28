@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""CPU 推理延迟与批量吞吐基准。
+"""推理延迟与批量吞吐基准（CPU 或 GPU）。
 
 测量内容：
 1. 权重加载时间（YOLO(weights)）。
@@ -10,7 +10,7 @@
 4. 批量吞吐：按 1 / 4 / 8 / 16 / 20 张一组调用 `predict`，统计 images/s。
 
 说明：
-- 默认 device='cpu'，conf=0.25、iou=0.45、imgsz=320，与系统默认一致。
+- device 默认 'cpu'；有 NVIDIA 显卡时加 --device 0 测 GPU。conf=0.25、iou=0.45、imgsz=320，与系统默认一致。
 - 图片事先读入内存，计时不含磁盘 I/O；Web 请求的实际耗时会再多几毫秒。
 - 批量吞吐是“按 N 张一组调用 predict”的吞吐，包含 Python 前后处理开销，
   不是严格意义的单次 batch tensor 推理。
@@ -56,7 +56,7 @@ def pct(values, q):
 def main():
     here = Path(__file__).resolve()
     pkg_root = here.parents[3]
-    ap = argparse.ArgumentParser(description="CPU 推理延迟与批量吞吐基准")
+    ap = argparse.ArgumentParser(description="推理延迟与批量吞吐基准（CPU / GPU）")
     ap.add_argument("--weights", default=str(pkg_root / "02_模型权重" / "best.pt"))
     ap.add_argument("--data-root", default=str(pkg_root / "03_数据集" / "NEU-DET"))
     ap.add_argument("--out-dir", default=str(pkg_root / "04_训练结果"))
@@ -66,7 +66,7 @@ def main():
     ap.add_argument("--imgsz", type=int, default=320)
     ap.add_argument("--conf", type=float, default=0.25)
     ap.add_argument("--iou", type=float, default=0.45)
-    ap.add_argument("--device", default="cpu")
+    ap.add_argument("--device", default="cpu", help="'cpu' 或 '0'（第一块 GPU）")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--batch-sizes", default="1,4,8,16,20")
     args = ap.parse_args()
@@ -86,8 +86,17 @@ def main():
     print(f"数据      : {data_root} ({args.split})")
     print(f"设备      : {args.device}  imgsz={args.imgsz}  conf={args.conf}  iou={args.iou}")
     print(f"计时      : 预热 {len(warm_paths)} 张，计时 {len(test_paths)} 张")
-    print(f"CPU       : {platform.processor() or platform.machine()}  "
-          f"逻辑核心={os.cpu_count()}  torch线程={torch.get_num_threads()}")
+    on_gpu = args.device not in ("cpu", "")
+    if on_gpu:
+        idx = int(args.device) if str(args.device).isdigit() else 0
+        dev_name = torch.cuda.get_device_name(idx)
+        dev_label = "GPU"
+        print(f"GPU       : {dev_name}")
+    else:
+        dev_name = platform.processor() or platform.machine()
+        dev_label = "CPU"
+        print(f"CPU       : {dev_name}  "
+              f"逻辑核心={os.cpu_count()}  torch线程={torch.get_num_threads()}")
 
     # 预读图片，计时不含磁盘 I/O
     def read(p):
@@ -186,7 +195,7 @@ def main():
                label=f"P95 {stats['p95']:.1f} ms")
     ax.set_xlabel("End-to-end latency per image (ms)")
     ax.set_ylabel("Images")
-    ax.set_title("(a) Single-image CPU latency")
+    ax.set_title(f"(a) Single-image {dev_label} latency")
     ax.legend(loc="best", fontsize=8)
     ax.grid(alpha=0.3, axis="y")
 
@@ -199,7 +208,7 @@ def main():
                 va="bottom", fontsize=8)
     ax.set_xlabel("Images per predict call")
     ax.set_ylabel("Throughput (images/s)")
-    ax.set_title("(b) Batch throughput (CPU)")
+    ax.set_title(f"(b) Batch throughput ({dev_label})")
     ax.grid(alpha=0.3, axis="y")
 
     fig.tight_layout()
@@ -208,13 +217,16 @@ def main():
 
     # Markdown
     lines = []
-    lines.append("# CPU 推理延迟与批量吞吐\n")
+    lines.append(f"# {dev_label} 推理延迟与批量吞吐\n")
     lines.append(f"- 模型：`{Path(args.weights).name}`，imgsz={args.imgsz}，"
                  f"conf={args.conf}，NMS IoU={args.iou}，device=`{args.device}`")
     lines.append(f"- 数据：NEU-DET `{args.split}`，预热 {len(warm_paths)} 张，计时 {len(test_paths)} 张")
-    lines.append(f"- 环境：{platform.processor() or platform.machine()}，"
-                 f"逻辑核心 {os.cpu_count()}，PyTorch {torch.__version__}，"
-                 f"torch 线程 {torch.get_num_threads()}，Ultralytics 见运行日志")
+    if on_gpu:
+        lines.append(f"- 环境：{dev_name}，PyTorch {torch.__version__}，CUDA {torch.version.cuda}")
+    else:
+        lines.append(f"- 环境：{dev_name}，"
+                     f"逻辑核心 {os.cpu_count()}，PyTorch {torch.__version__}，"
+                     f"torch 线程 {torch.get_num_threads()}，Ultralytics 见运行日志")
     lines.append(f"- 权重加载：{load_ms:.1f} ms；首张冷启动：{first_ms:.1f} ms\n")
     lines.append("## 单张端到端延迟\n")
     lines.append("| 指标 | 数值 (ms) |")
@@ -233,7 +245,9 @@ def main():
     lines.append("\n## 说明\n")
     lines.append("- 计时为端到端 `model.predict`，含预处理、推理、NMS 和后处理；不含磁盘读取。")
     lines.append("- 批量吞吐按“N 张一组调用 predict”统计，包含 Python 前后处理开销。")
-    lines.append("- 笔记本 CPU 受功耗和温度影响，重复运行会有几个百分点的波动。")
+    lines.append("- 笔记本的 CPU 和 GPU 都受功耗与温度影响，重复运行会有几个百分点的波动。")
+    lines.append("- 计时为端到端墙钟时间。GPU 上 Ultralytics 在推理后调用 `torch.cuda.synchronize()`，"
+                 "所以每张图的耗时已包含等待 GPU 算完的时间。")
     (out_dir / "cpu_latency.md").write_text("\n".join(lines), encoding="utf-8")
     print(f"\n单张均值 {stats['mean']:.1f} ms，P95 {stats['p95']:.1f} ms，"
           f"纯推理均值 {stats['infer_mean']:.1f} ms")

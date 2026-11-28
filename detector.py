@@ -188,13 +188,26 @@ def annotate(image: np.ndarray, defects: list, conf_high: float) -> np.ndarray:
     return cv2.cvtColor(np.asarray(pil), cv2.COLOR_RGB2BGR)
 
 
+def pick_device(device: str = None) -> str:
+    """决定推理设备：显式指定优先；留空时有 CUDA 就用 GPU，否则用 CPU。"""
+    if device:
+        return device
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "0"
+    except Exception:
+        pass
+    return "cpu"
+
+
 class Detector:
     """封装 YOLO 模型，对外只暴露 predict。"""
 
-    def __init__(self, weights: str, imgsz: int = 320, device: str = "cpu"):
+    def __init__(self, weights: str, imgsz: int = 320, device: str = None):
         self.model = YOLO(weights)
         self.imgsz = imgsz
-        self.device = device
+        self.device = pick_device(device)
 
     @property
     def names(self) -> dict:

@@ -2,7 +2,7 @@
 
 基于 Ultralytics YOLO 的热轧钢带表面缺陷检测课程设计工程。
 
-**部署方式：云端 GPU 训练 + 本地 CPU 演示。**
+**部署方式：本地 GPU 训练 + 本地 GPU 演示（部署模型 YOLO26s）；三模型对比、种子重复和鲁棒性实验在云端 GPU 上完成。**
 
 > 系统如何运行、Web 界面与接口说明见根目录 [README.md](../../README.md)
 > 和 [系统说明.md](../../系统说明.md)。本文件只讲训练脚本与复现流程。
@@ -23,7 +23,7 @@
 └───────────────────────────────────────────────────┘        └──────────────────────┘
 ```
 
-本地不需要 CUDA，CPU 版 PyTorch 就能跑推理和界面。
+Web 系统有 NVIDIA 显卡时默认用 GPU 推理（RTX 4060 Laptop 上 YOLO26s 单张约 9 ms）；没有显卡时自动改用 CPU（约 25 ms），不需要改代码。
 
 ---
 
@@ -32,8 +32,9 @@
 ```
 steel-defect-yolo/
 ├── data.yaml                  # 数据集配置（类别 + 相对路径）
-├── requirements-local.txt     # 本地演示环境（CPU）
-├── requirements-server.txt    # 云端训练环境
+├── requirements-server.txt    # 云端训练环境（GPU）
+├── requirements-web.txt       # Flask Web 系统（GPU 或 CPU 推理）
+├── requirements-streamlit.txt # 旧版 Streamlit 演示（CPU）
 ├── datasets/                  # 数据集说明（实际数据放在 D:\yolo\datasets）
 ├── scripts/
 │   ├── prepare_dataset.py     # 未划分的 VOC 数据集 → YOLO 格式 + 划分
@@ -55,6 +56,16 @@ steel-defect-yolo/
 
 > Web 检测系统（`app.py`、`detector.py`、`db.py`、前端单页）已放在打包目录根上，
 > 与本工程平级，不在这里。
+
+### 环境依赖
+
+| 文件 | 用途 | 对应入口 | 安装 |
+|---|---|---|---|
+| `requirements-server.txt` | 云端 GPU 训练与评估 | `scripts/train.py`、`scripts/val.py` | `pip install -r requirements-server.txt` |
+| `requirements-web.txt` | Flask Web 系统（GPU 或 CPU 推理） | 打包根目录 `app.py` | `pip install -r requirements-web.txt` |
+| `requirements-streamlit.txt` | 旧版 Streamlit 演示（CPU） | `app/streamlit_app.py` | `pip install -r requirements-streamlit.txt` |
+
+> `requirements-web.txt` 对应报告里使用的 Flask 系统；`app/streamlit_app.py` 只是早期备选界面，两者不要混用。
 
 ---
 
@@ -104,7 +115,7 @@ D:/yolo/weights/best.pt
 
 ### 第 5 步：本地演示
 
-在打包目录根上启动（`app.py` 与 `02_模型权重/` 平级）：
+Flask 系统依赖用 `requirements-web.txt` 安装（见上面的环境依赖表），然后在打包目录根上启动（`app.py` 与 `02_模型权重/` 平级）：
 
 ```bash
 python app.py --port 5000
@@ -118,7 +129,8 @@ python app.py --port 5000
 界面是原生 HTML + CSS + JS 的单页应用（`static/app/`），数据全部走
 `/api/*`：检测、批量、历史、统计、模型五个部分，另有可打印的 A4 检测报告。
 
-> 早期的 Streamlit 版本仍保留在 `app/streamlit_app.py`，需要时
+> 早期的 Streamlit 版本仍保留在 `app/streamlit_app.py`，需要时先
+> `pip install -r requirements-streamlit.txt`，再
 > `streamlit run app/streamlit_app.py`（端口 8501）。
 
 ---
@@ -150,7 +162,7 @@ python scripts/export.py --weights D:/yolo/weights/best.pt --format onnx
 | 参数 | 建议值 | 原因 |
 |---|---|---|
 | `--imgsz` | **320** | 原图只有 200×200，640 是浪费算力 |
-| `--model` | `yolo11s.pt` | 8GB 显存和云端都合适 |
+| `--model` | `yolo26s.pt` | 部署模型；8GB 显存和云端都合适 |
 | `--batch` | 云端 32 / 本地 8 | 200×200 图片显存占用很小 |
 | `--epochs` | 150 | 数据集小，容易过拟合，配合 `patience=30` |
 
@@ -165,7 +177,7 @@ A：把 `--batch` 减半，或者 `--imgsz` 降到 256。
 A：先跑 `check_dataset.py` 看框有没有画偏；再确认 `data.yaml` 里 `names` 的顺序和标注一致。
 
 **Q：本地推理很慢**
-A：CPU 推理 YOLO11s 实测约 27 ms/张（Ryzen 9 8945H），其他模型视参数量而定，演示都够用。批量处理建议用 `--imgsz 320`。
+A：有 NVIDIA 显卡时，先确认装的是 CUDA 版 PyTorch（`python -c "import torch; print(torch.cuda.is_available())"` 应输出 True），系统会自动用 GPU，YOLO26s 在 RTX 4060 Laptop 上约 9 ms/张。只能用 CPU 时 YOLO26s 约 25 ms/张（Ryzen 9 8945H），演示也够用。批量处理建议用 `--imgsz 320`。
 
 **Q：报错 `Download failure for Arial.ttf`**
 A：ultralytics 画图要用的字体下载失败（国内常见）。直接把系统字体复制过去：

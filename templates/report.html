@@ -127,7 +127,7 @@
   <header class="head">
     <div>
       <h1>钢带表面缺陷检测报告</h1>
-      <p>热轧钢带 · YOLO11s · NEU-DET</p>
+      <p>热轧钢带 · {{ model_name }} · NEU-DET</p>
     </div>
     <dl>
       <div><dt>报告编号</dt><dd>#{{ "%05d"|format(record_id) }}</dd></div>
@@ -195,7 +195,7 @@
     <div><dt>检出阈值</dt><dd>{{ params.conf }}</dd></div>
     <div><dt>不合格阈值</dt><dd>{{ params.conf_high }}</dd></div>
     <div><dt>最小面积</dt><dd>{{ "%.0f"|format(params.min_area) }} px</dd></div>
-    <div><dt>模型</dt><dd>YOLO11s / 320</dd></div>
+    <div><dt>模型</dt><dd>{{ model_name }} / {{ model_imgsz }}</dd></div>
   </section>
 
   <footer class="foot">

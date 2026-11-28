@@ -5,6 +5,7 @@
 启动（在 app.py 所在目录）：
     python app.py
     python app.py --weights D:/yolo/weights/best.pt
+    python app.py --device cpu        # 强制用 CPU（默认有 NVIDIA 显卡就用 GPU）
 
 页面（原生 HTML + CSS + JS 单页应用）：
     /               单张 / 批量检测
@@ -55,6 +56,7 @@ app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024  # 单次请求上限 64MB
 _state = {
     "weights": os.environ.get("STEEL_WEIGHTS", "D:/yolo/weights/best.pt"),
     "imgsz": int(os.environ.get("STEEL_IMGSZ", "320")),
+    "device": os.environ.get("STEEL_DEVICE", ""),  # 留空：有 CUDA 用 GPU，否则 CPU
     "detector": None,
 }
 _lock = threading.Lock()
@@ -100,7 +102,8 @@ def get_detector():
             weights = Path(_state["weights"])
             if not weights.is_file():
                 return None
-            det = Detector(str(weights), imgsz=_state["imgsz"])
+            det = Detector(str(weights), imgsz=_state["imgsz"], device=_state["device"])
+            _state["device"] = det.device
             # 预热一次，避免首张图的耗时把 6 秒的模型初始化算进去
             try:
                 det.predict(np.zeros((320, 320, 3), np.uint8),
@@ -269,6 +272,8 @@ def report(rid):
     if rec is None:
         abort(404)
     data = record_to_view(rec, rows)
+    data["model_name"] = model_meta.MODEL["name"]
+    data["model_imgsz"] = _state["imgsz"]
     return render_template("report.html", **data)
 
 
@@ -452,6 +457,7 @@ def api_stats():
 
 @app.route("/api/model")
 def api_model():
+    ready = model_ready()  # 先触发模型加载，下面读到的才是实际使用的设备
     return jsonify({
         "ok": True,
         "model": model_meta.MODEL,
@@ -460,11 +466,13 @@ def api_model():
         "test_metrics": model_meta.TEST,
         "per_class": model_meta.PER_CLASS,
         "compare": model_meta.COMPARE,
+        "seed_sweep": model_meta.SEED_SWEEP,
         "classes": CLASS_ZH,
         "judge_rules": model_meta.RULES,
         "weights": _state["weights"],
         "imgsz": _state["imgsz"],
-        "ready": model_ready(),
+        "device": _state["device"] or "cpu",
+        "ready": ready,
     })
 
 
@@ -508,6 +516,8 @@ if __name__ == "__main__":
     ap.add_argument("--weights", default=None,
                     help="权重路径，省略时自动在工程内和打包目录里查找 best.pt")
     ap.add_argument("--imgsz", type=int, default=_state["imgsz"])
+    ap.add_argument("--device", default=_state["device"],
+                    help="推理设备：0 为第一块 GPU，cpu 为 CPU；省略时有 GPU 就用 GPU")
     ap.add_argument("--host", default="0.0.0.0")
     ap.add_argument("--port", type=int, default=5000)
     args = ap.parse_args()
@@ -515,10 +525,20 @@ if __name__ == "__main__":
     weights = pick_weights(args.weights)
     _state["weights"] = str(weights)
     _state["imgsz"] = args.imgsz
+    _state["device"] = args.device
 
     print(f"模型权重：{weights}")
     if not weights.is_file():
         print("         （文件不存在，页面能打开，但检测会提示找不到权重）")
+    else:
+        model_ready()  # 启动时就加载模型并预热，第一个请求不用等
+    if _state["device"] == "cpu":
+        print("推理设备：CPU")
+    else:
+        import torch
+        idx = int(_state["device"]) if str(_state["device"]).isdigit() else 0
+        name = torch.cuda.get_device_name(idx) if torch.cuda.is_available() else "GPU"
+        print(f"推理设备：GPU {idx}（{name}）")
     print(f"推理尺寸：{args.imgsz}")
     print(f"访问地址：http://localhost:{args.port}")
     if not os.environ.get("STEEL_NO_BROWSER"):

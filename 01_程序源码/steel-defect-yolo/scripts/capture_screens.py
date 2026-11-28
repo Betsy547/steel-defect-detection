@@ -29,6 +29,9 @@ EDGE_CANDIDATES = [
 PORT = 9223
 VIEW = (1440, 900)
 
+# 内置示例图所在目录（打包目录 static/samples/）：scripts/ → steel-defect-yolo/ → 01_程序源码/ → 打包目录
+SAMPLE_DIR = Path(__file__).resolve().parents[3] / "static" / "samples"
+
 # 批量检测页没有独立地址，用页面里的函数直接灌入示例图再点检测
 BATCH_JS = """
 (async () => {
@@ -97,6 +100,25 @@ def wait_port(url, tries=60):
     raise SystemExit(f"连不上 {url}")
 
 
+def new_record(base: str, sample: str) -> int:
+    """用内置示例图做一次单张检测，返回新记录的 id。"""
+    boundary = "----steelscreen"
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="image"; filename="{sample}"\r\n'
+        "Content-Type: image/jpeg\r\n\r\n"
+    ).encode() + open(SAMPLE_DIR / sample, "rb").read() + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(
+        f"{base}/api/predict", data=body, method="POST",
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as r:
+        data = json.load(r)
+    if not data.get("ok") or "record_id" not in data:
+        raise SystemExit(f"单张检测失败，拿不到记录 id：{data}")
+    return int(data["record_id"])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:5000")
@@ -155,13 +177,17 @@ def main():
             path.write_bytes(base64.b64decode(data))
             print("saved", path)
 
+        # 结果页和报告页需要一条真实记录：先用示例图做一次单张检测，拿到它的 id
+        record_id = new_record(args.base, "crazing.jpg")
+        print(f"单张检测记录 id = {record_id}")
+
         shot("01-home", "/", settle=3.0)
-        shot("02-result", "/#/record/20")
+        shot("02-result", f"/#/record/{record_id}")
         shot("03-batch", "/#/detect", js=BATCH_JS, settle=4.5)
         shot("04-history", "/#/history")
         shot("05-stats", "/#/stats")
         shot("06-model", "/#/model")
-        shot("07-report", "/report/20", settle=2.0)
+        shot("07-report", f"/report/{record_id}", settle=2.0)
 
         cdp.close()
     finally:

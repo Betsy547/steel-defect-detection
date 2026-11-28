@@ -32,9 +32,13 @@ from pathlib import Path
 here = Path(__file__).resolve()
 pkg_root = here.parents[3]
 os.environ.setdefault("STEEL_WEIGHTS", str(pkg_root / "02_模型权重" / "best.pt"))
+os.environ.setdefault("STEEL_NO_BROWSER", "1")
 sys.path.insert(0, str(pkg_root))
 
 import db  # noqa: E402
+import model_meta  # noqa: E402
+
+EXPECTED_MODEL = model_meta.MODEL["name"]  # 部署模型换了，这里自动跟着变
 
 _tmp = tempfile.TemporaryDirectory()
 db.DB_PATH = Path(_tmp.name) / "detections_test.db"
@@ -85,8 +89,8 @@ add(2, "历史页重定向", "GET /history", "302 -> /#/history", r,
 # 3 模型信息
 r = client.get("/api/model")
 j = r.get_json() or {}
-add(3, "模型信息接口", "GET /api/model", "200 + YOLO11s", r,
-    r.status_code == 200 and j.get("ok") and j.get("model", {}).get("name") == "YOLO11s",
+add(3, "模型信息接口", "GET /api/model", f"200 + {EXPECTED_MODEL}", r,
+    r.status_code == 200 and j.get("ok") and j.get("model", {}).get("name") == EXPECTED_MODEL,
     f"name={j.get('model', {}).get('name')}, mAP50={j.get('test_metrics', {}).get('mAP50')}")
 
 # 4 示例列表
@@ -225,8 +229,9 @@ r = client.get("/static/samples/crazing.jpg")
 add(21, "静态示例图", "GET /static/samples/crazing.jpg", "200 + image/jpeg", r,
     r.status_code == 200 and r.mimetype == "image/jpeg", r.mimetype)
 
-# 输出
-out_dir = pkg_root / "04_训练结果"
+# 输出（--out-dir 可指定别的目录；省略时写 04_训练结果/）
+_out = sys.argv[sys.argv.index("--out-dir") + 1] if "--out-dir" in sys.argv else None
+out_dir = Path(_out) if _out else pkg_root / "04_训练结果"
 out_dir.mkdir(parents=True, exist_ok=True)
 with (out_dir / "system_test.csv").open("w", newline="", encoding="utf-8-sig") as f:
     w = csv.DictWriter(f, fieldnames=list(results[0].keys()))
@@ -234,11 +239,12 @@ with (out_dir / "system_test.csv").open("w", newline="", encoding="utf-8-sig") a
     w.writerows(results)
 
 passed = sum(1 for r in results if r["result"] == "PASS")
+dev = app_module._state.get("device") or "cpu"
 lines = [
     "# Flask 检测系统端到端测试\n",
     f"- 用例数：{len(results)}；通过：{passed}；失败：{len(results) - passed}",
     "- 方式：Flask `test_client()` 进程内请求，临时数据库与临时上传目录，不污染项目数据",
-    f"- 权重：`{Path(os.environ['STEEL_WEIGHTS']).name}`\n",
+    f"- 模型：{EXPECTED_MODEL}；权重：`{Path(os.environ['STEEL_WEIGHTS']).name}`；设备：`{dev}`\n",
     "| # | 用例 | 请求 | 预期 | 实际 | 结果 |",
     "|---:|---|---|---|---|---|",
 ]
@@ -246,7 +252,7 @@ for r in results:
     lines.append(f"| {r['id']} | {r['case']} | `{r['request']}` | {r['expected']} | {r['actual']} | {r['result']} |")
 lines.append("")
 lines.append("## 说明\n")
-lines.append("- 第 7、8、9 条会真实调用模型推理，首次请求包含 predictor 初始化，耗时约 2–3 s；后续单张约 27 ms。")
+lines.append("- 第 7、8、9 条会真实调用模型推理，首次请求包含 predictor 初始化；之后单张的耗时见第 7 条的实际值。")
 lines.append("- 第 13、14 条测试批量上限，21 张在上传阶段就被拒绝，不会进入推理。")
 lines.append("- 第 18 条报告页依赖第 5 或第 7 条生成的记录 id。")
 (out_dir / "system_test.md").write_text("\n".join(lines), encoding="utf-8")
