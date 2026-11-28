@@ -880,7 +880,7 @@ async function renderModel(token) {
         </tr></thead>
         <tbody>${cls}</tbody>
       </table>
-      <p class="tbl-note">龟裂是细密网状微裂纹，在 200×200 灰度图上与轧制纹理高度相似，是 NEU-DET 公认最难的一类，也是本系统主要的漏检来源。</p>
+      <p class="tbl-note">龟裂是细密网状微裂纹，在 200×200 灰度图上与轧制纹理高度相似，是 NEU-DET 公认最难的一类。测试集 64 个龟裂框有 63 个被检出且类别正确，难点不在认错类别，而在于另有 2520 个背景区域被判成龟裂，正确的框排不到前面。</p>
     </section>
 
     <section class="block" style="margin-bottom:18px">
@@ -896,7 +896,7 @@ async function renderModel(token) {
         </tr></thead>
         <tbody>${cmp}</tbody>
       </table>
-      <p class="tbl-note">单次训练的三行来自云端 RTX 4090 的同协议批次（seed 0），与当前部署权重不是同一次训练；部署权重在本机 RTX 4060 上训练，测试集 mAP50 为 ${T.mAP50.toFixed(3)}。单看一次训练，三个模型的 mAP50 差距只有 1–3 个百分点。</p>
+      <p class="tbl-note">单次训练的三行来自云端 RTX 4090 的第一批对比实验，与下面 3 seed 重训里的 seed 0、以及当前部署权重都不是同一次训练；部署权重在本机 RTX 4060 上训练，测试集 mAP50 为 ${T.mAP50.toFixed(3)}。单看一次训练，三个模型的 mAP50 差距只有 1–3 个百分点。</p>
       <table class="grid" style="margin-top:12px">
         <thead><tr>
           <th>3 个随机种子的均值 ± 标准差</th><th class="num" style="text-align:right">mAP50</th>
@@ -906,7 +906,7 @@ async function renderModel(token) {
         </tr></thead>
         <tbody>${sw}</tbody>
       </table>
-      <p class="tbl-note">把每个模型重复训练 3 次（seed 0/1/2）后，YOLO26s 三次都是第一，六类缺陷的逐类 mAP50 也都高于另外两个模型；参数量和权重体积与 YOLO11s 相当（9.95 M / 20.3 MB 对 9.43 M / 19.2 MB）。因此选 YOLO26s 作为部署模型。YOLOv8s 的 Recall 略高，如果漏检的代价远大于误检，它也值得考虑。</p>
+      <p class="tbl-note">把每个模型重复训练 3 次（seed 0/1/2）后，YOLO26s 三次都是第一；逐类平均 mAP50 六类都不低于 YOLO11s（斑块持平），和 YOLOv8s 相比五类更高（龟裂基本持平）、只有氧化铁皮压入更低。参数量和权重体积与 YOLO11s 相当（9.95 M / 20.3 MB 对 9.43 M / 19.2 MB），因此选 YOLO26s 作为部署模型。它领先 YOLOv8s 只有 0.009，小于各自的波动，结论是名次稳定而不是差距显著；YOLOv8s 的 Recall 略高，如果漏检的代价远大于误检，它也值得考虑。</p>
     </section>
 
     <div class="model-grid">
